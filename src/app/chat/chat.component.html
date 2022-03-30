@@ -1,0 +1,18 @@
+<div *ngIf="nickname">
+  <label>
+    Message:
+    <input type="text" [formControl]="message">
+  </label>
+
+  <button (click)="sendMessage()">Send Message</button>
+
+  <h4 *ngFor="let message of messages">{{message}}</h4>
+</div>
+<div *ngIf="!nickname">
+  <label>
+    Enter Nickname:
+    <input type="text" [formControl]="nicknameFc">
+  </label>
+
+  <button (click)="sendNickname()">Enter</button>
+</div>
