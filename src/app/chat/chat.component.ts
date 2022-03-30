@@ -1,7 +1,9 @@
+import { ChatMessage } from './shared/chat-message.model';
 import { ChatService } from './shared/chat.service';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { Subject, Subscription, take, takeUntil, Observable } from 'rxjs';
+import { ChatClient } from './shared/chat-client.model';
 
 @Component({
   selector: 'app-chat',
@@ -12,9 +14,9 @@ export class ChatComponent implements OnInit ,OnDestroy{
 
   message = new FormControl();
   nicknameFc = new FormControl();
-  messages:String[]=[];
+  messages:ChatMessage[]=[];
   unsubscriber$=new Subject<void>();
-  clients$!:Observable<string[]>;
+  clients$!:Observable<ChatClient[]>;
   nickname!:string;
 
 
