@@ -1,3 +1,4 @@
+import { WelcomeDto } from './../welcome.dto';
 import { Injectable } from '@angular/core';
 import { Socket } from 'ngx-socket-io';
 import { Observable } from 'rxjs';
@@ -9,10 +10,20 @@ import { ChatMessage } from './chat-message.model';
 })
 export class ChatService {
 
+  chatClient!:ChatClient;
+
   constructor(private socket: Socket) {}
 
   sendMessage(msg: string):void {
     this.socket.emit('message', msg);
+  }
+
+  sendTyping(typing: boolean):void {
+    this.socket.emit('typing', typing);
+  }
+
+  listenForClientTyping():Observable<ChatClient>{
+    return this.socket.fromEvent<ChatClient>('clientTyping');
   }
 
   listenForMessages():Observable<ChatMessage>{
@@ -21,6 +32,14 @@ export class ChatService {
 
   listenForClients():Observable<ChatClient[]>{
     return this.socket.fromEvent<ChatClient[]>('clients');
+  }
+
+  listenForWelcome():Observable<WelcomeDto>{
+    return this.socket.fromEvent<WelcomeDto>('welcome');
+  }
+
+  listenForErrors():Observable<string>{
+    return this.socket.fromEvent<string>('error');
   }
 
   getAllMessages():Observable<ChatMessage[]>{

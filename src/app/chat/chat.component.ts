@@ -2,7 +2,7 @@ import { ChatMessage } from './shared/chat-message.model';
 import { ChatService } from './shared/chat.service';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { Subject, Subscription, take, takeUntil, Observable } from 'rxjs';
+import { Subject, Subscription, take, takeUntil, Observable, debounce, debounceTime } from 'rxjs';
 import { ChatClient } from './shared/chat-client.model';
 
 @Component({
@@ -12,13 +12,14 @@ import { ChatClient } from './shared/chat-client.model';
 })
 export class ChatComponent implements OnInit ,OnDestroy{
 
-  message = new FormControl();
+  messageFc = new FormControl();
   nicknameFc = new FormControl();
   messages:ChatMessage[]=[];
+  clientsTyping:ChatClient[]=[];
   unsubscriber$=new Subject<void>();
   clients$!:Observable<ChatClient[]>;
-  nickname!:string;
-
+  error$!:Observable<string>;
+  chatClient!:ChatClient;
 
   constructor(private chatService:ChatService) { }
 
@@ -26,15 +27,19 @@ export class ChatComponent implements OnInit ,OnDestroy{
   ngOnDestroy(): void {
     // if(this.sub)
     //   this.sub.unsubscribe();
-   console.log("unsubscribe");
     this.unsubscriber$.next();
     this.unsubscriber$.complete();
-    this.chatService.disconnect();
-
   }
 
   ngOnInit(): void {
+    this.messageFc.valueChanges.pipe(
+      takeUntil(this.unsubscriber$),
+      debounceTime(5000)
+    ).subscribe((value)=>{
+      this.chatService.sendTyping(value.length>0);
+    });
     this.clients$ =this.chatService.listenForClients();
+    this.error$ = this.chatService.listenForErrors();
     this.chatService.listenForMessages()
     .pipe(
       takeUntil(this.unsubscriber$)
@@ -45,29 +50,38 @@ export class ChatComponent implements OnInit ,OnDestroy{
         this.messages.push(message);
       }
     );
-
-    this.chatService.getAllMessages()
-    .pipe(
-      take(1)
-    )
-    .subscribe(
-      messages=>{
-      console.log("push Array .. lestening");
-        this.messages=messages;
+    this.chatService.listenForClientTyping().pipe(
+      takeUntil(this.unsubscriber$)
+    ).subscribe(
+      (chatClient)=>{
+        if(chatClient.typing && !this.clientsTyping.find(c=>c.id===chatClient.id)){
+          this.clientsTyping.push(chatClient);
+        }else{
+          this.clientsTyping = this.clientsTyping.filter(c=>c.id!==chatClient.id);
+        }
       }
     );
-    this.chatService.connect();
-
+    //initial data always
+    this.chatService.listenForWelcome().pipe(
+      takeUntil(this.unsubscriber$)
+    ).subscribe(
+      welcome=>{
+        this.messages = welcome.messages;
+        this.chatClient = this.chatService.chatClient = welcome.client;
+      }
+    );
+    if(this.chatService.chatClient){
+      this.chatService.sendNickname(this.chatService.chatClient.nickname);
+    }
   }
 
   sendMessage(){
-    console.log(this.message.value);
-    this.chatService.sendMessage(this.message.value);
+    console.log(this.messageFc.value);
+    this.chatService.sendMessage(this.messageFc.value);
   }
 
   sendNickname(){
     if(this.nicknameFc.value){
-      this.nickname=this.nicknameFc.value;
       this.chatService.sendNickname(this.nicknameFc.value);
     }
   }
